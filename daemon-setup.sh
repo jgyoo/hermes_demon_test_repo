@@ -8,7 +8,7 @@
 #   ./daemon-setup.sh                # Setup + install as background service
 #   ./daemon-setup.sh run            # Foreground mode (for debugging)
 #   ./daemon-setup.sh stop           # Stop daemon
-#   ./daemon-setup.sh update v0.2.0  # Pull specific version + restart
+#   ./daemon-setup.sh update         # Pull latest image + restart
 #   ./daemon-setup.sh logs           # Tail daemon logs
 #   ./daemon-setup.sh status         # Show daemon status
 #   ./daemon-setup.sh uninstall      # Remove background service
@@ -16,7 +16,6 @@ set -euo pipefail
 
 REGISTRY="${HERMES_REGISTRY:-ghcr.io/jgyoo}"
 IMAGE="${REGISTRY}/hermes-daemon"
-VERSION="${HERMES_VERSION:-v0.1.6}"
 DAEMON_DIR="${HERMES_DAEMON_DIR:-$HOME/.hermes-daemon}"
 SERVICE_NAME="hermes-daemon"
 
@@ -61,14 +60,13 @@ check_auth() {
 }
 
 generate_compose_file() {
-    local agent_name tag
+    local agent_name
     agent_name=$(grep HERMES_AGENT_AGENT_NAME "$DAEMON_DIR/.env.daemon" | cut -d= -f2)
-    tag=$(grep HERMES_IMAGE_TAG "$DAEMON_DIR/.env.daemon" | cut -d= -f2 || echo "$VERSION")
 
     cat > "$DAEMON_DIR/docker-compose.yml" <<YAML
 services:
   hermes-daemon:
-    image: ${IMAGE}:${tag}
+    image: ${IMAGE}:latest
     container_name: hermes-daemon-${agent_name}
     env_file:
       - .env.daemon
@@ -93,19 +91,16 @@ ensure_setup() {
 
     check_auth
 
-    local daemon_name orch_url image_tag
+    local daemon_name orch_url
     daemon_name=$(hostname)
     orch_url="ws://192.168.11.23:8003/ws/nodes"
-    image_tag="$VERSION"
 
     info "Daemon name: ${daemon_name}"
     info "Orchestrator: ${orch_url}"
-    info "Image version: ${image_tag}"
 
     cat > "$DAEMON_DIR/.env.daemon" <<EOF
 HERMES_AGENT_AGENT_NAME=${daemon_name}
 HERMES_AGENT_ORCHESTRATOR_URL=${orch_url}
-HERMES_IMAGE_TAG=${image_tag}
 CLAUDE_CONFIG_DIR=${HOME}/.claude
 EOF
 
@@ -120,10 +115,8 @@ cmd_start() {
 
     cd "$DAEMON_DIR"
 
-    info "Pulling image..."
-    local tag
-    tag=$(grep HERMES_IMAGE_TAG "$DAEMON_DIR/.env.daemon" | cut -d= -f2 || echo "$VERSION")
-    docker pull "${IMAGE}:${tag}"
+    info "Pulling latest image..."
+    docker pull "${IMAGE}:latest"
 
     # Install systemd service
     local script_path
@@ -163,7 +156,7 @@ EOF
     info "  Logs:      $0 logs"
     info "  Status:    $0 status"
     info "  Stop:      $0 stop"
-    info "  Update:    $0 update v0.2.0"
+    info "  Update:    $0 update"
     info "  Uninstall: $0 uninstall"
 }
 
@@ -173,6 +166,11 @@ cmd_run() {
     ensure_setup
 
     cd "$DAEMON_DIR"
+
+    # Always pull latest image before starting (enables auto-update via Send Update)
+    info "Pulling latest image..."
+    docker pull "${IMAGE}:latest" || warn "Pull failed — using cached image"
+
     info "Starting daemon (Ctrl+C to stop)..."
     $COMPOSE_CMD up --abort-on-container-exit hermes-daemon
 }
@@ -191,28 +189,15 @@ cmd_stop() {
 }
 
 cmd_update() {
-    local new_tag="${2:-}"
-    if [[ -z "$new_tag" ]]; then
-        error "Usage: $0 update <version>"
-        echo "  Example: $0 update v0.2.0"
-        exit 1
-    fi
-
     check_prerequisites
     check_auth
     cd "$DAEMON_DIR"
 
-    info "Updating to ${IMAGE}:${new_tag}..."
-    docker pull "${IMAGE}:${new_tag}"
-
-    # Update .env.daemon with new tag
-    sed -i "s/^HERMES_IMAGE_TAG=.*/HERMES_IMAGE_TAG=${new_tag}/" "$DAEMON_DIR/.env.daemon"
-
-    # Regenerate compose file with new tag
-    generate_compose_file
+    info "Pulling latest image..."
+    docker pull "${IMAGE}:latest"
 
     $COMPOSE_CMD up -d hermes-daemon
-    info "Update complete: ${new_tag}"
+    info "Update complete"
 }
 
 cmd_logs() {
@@ -264,7 +249,7 @@ case "${1:-start}" in
         echo "  (none)        — Setup + install as background service (default)"
         echo "  run           — Foreground mode (for debugging)"
         echo "  stop          — Stop daemon"
-        echo "  update <ver>  — Pull specific version + restart (e.g. update v0.2.0)"
+        echo "  update        — Pull latest image + restart"
         echo "  logs          — Tail daemon logs"
         echo "  status        — Show daemon status"
         echo "  uninstall     — Remove background service"
