@@ -7,22 +7,14 @@ DAEMON_DIR="$HOME/.hermes-daemon"
 SERVICE_NAME="hermes-daemon"
 
 echo "[1/4] Stopping existing daemon..."
-if systemctl --user is-active "$SERVICE_NAME" >/dev/null 2>&1; then
-    systemctl --user stop "$SERVICE_NAME"
-    systemctl --user disable "$SERVICE_NAME" 2>/dev/null || true
-    rm -f "$HOME/.config/systemd/user/${SERVICE_NAME}.service"
-    systemctl --user daemon-reload
-fi
+systemctl --user stop "$SERVICE_NAME" 2>/dev/null || true
+systemctl --user disable "$SERVICE_NAME" 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/${SERVICE_NAME}.service"
+systemctl --user daemon-reload 2>/dev/null || true
 
-# Stop docker compose if running
-if [ -f "$DAEMON_DIR/docker-compose.yml" ]; then
-    cd "$DAEMON_DIR"
-    if command -v docker-compose >/dev/null 2>&1; then
-        docker-compose down -v 2>/dev/null || true
-    elif docker compose version >/dev/null 2>&1; then
-        docker compose down -v 2>/dev/null || true
-    fi
-fi
+# Force-kill container if running
+docker rm -f "hermes-daemon-$(hostname)" 2>/dev/null || true
+docker rm -f hermes-daemon-default 2>/dev/null || true
 
 echo "[2/4] Removing old installation..."
 rm -rf "$DAEMON_DIR"
