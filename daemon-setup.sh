@@ -93,17 +93,14 @@ ensure_setup() {
 
     check_auth
 
-    local default_name
-    default_name=$(hostname)
+    local daemon_name orch_url image_tag
+    daemon_name=$(hostname)
+    orch_url="ws://192.168.11.23:8003/ws/nodes"
+    image_tag="$VERSION"
 
-    read -rp "Daemon name [$default_name]: " daemon_name
-    daemon_name="${daemon_name:-$default_name}"
-
-    read -rp "Orchestrator URL [ws://192.168.11.23:8003/ws/nodes]: " orch_url
-    orch_url="${orch_url:-ws://192.168.11.23:8003/ws/nodes}"
-
-    read -rp "Image version [$VERSION]: " image_tag
-    image_tag="${image_tag:-$VERSION}"
+    info "Daemon name: ${daemon_name}"
+    info "Orchestrator: ${orch_url}"
+    info "Image version: ${image_tag}"
 
     cat > "$DAEMON_DIR/.env.daemon" <<EOF
 HERMES_AGENT_AGENT_NAME=${daemon_name}
