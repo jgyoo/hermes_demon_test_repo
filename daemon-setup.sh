@@ -16,7 +16,7 @@ set -euo pipefail
 
 REGISTRY="${HERMES_REGISTRY:-ghcr.io/jgyoo}"
 IMAGE="${REGISTRY}/hermes-daemon"
-VERSION="${HERMES_VERSION:-v0.1.0}"
+VERSION="${HERMES_VERSION:-v0.1.6}"
 DAEMON_DIR="${HERMES_DAEMON_DIR:-$HOME/.hermes-daemon}"
 SERVICE_NAME="hermes-daemon"
 
@@ -73,8 +73,8 @@ services:
     env_file:
       - .env.daemon
     volumes:
-      - daemon-workspace:/root/hermes-workspace
-      - \${CLAUDE_CONFIG_DIR:-~/.claude}:/root/.claude:ro
+      - daemon-workspace:/home/hermes/hermes-workspace
+      - \${CLAUDE_CONFIG_DIR:-~/.claude}:/home/hermes/.claude:ro
     stop_grace_period: 120s
     restart: unless-stopped
 
