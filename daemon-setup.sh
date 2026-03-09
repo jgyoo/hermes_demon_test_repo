@@ -72,8 +72,8 @@ services:
       - .env.daemon
     volumes:
       - daemon-workspace:/home/hermes/hermes-workspace
-      - \${CLAUDE_CONFIG_DIR:-~/.claude}:/home/hermes/.claude:ro
-      - \${HOME}/.claude.json:/home/hermes/.claude.json:ro
+      - \${HOME}/.claude:/home/hermes/.claude
+      - \${HOME}/.claude.json:/home/hermes/.claude.json
     stop_grace_period: 120s
 
 volumes:
@@ -101,7 +101,7 @@ ensure_setup() {
     cat > "$DAEMON_DIR/.env.daemon" <<EOF
 HERMES_AGENT_AGENT_NAME=${daemon_name}
 HERMES_AGENT_ORCHESTRATOR_URL=${orch_url}
-CLAUDE_CONFIG_DIR=${HOME}/.claude
+CLAUDE_CONFIG_DIR=/home/hermes/.claude
 EOF
 
     generate_compose_file
