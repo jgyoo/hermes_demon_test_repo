@@ -73,6 +73,7 @@ services:
     volumes:
       - daemon-workspace:/home/hermes/hermes-workspace
       - \${CLAUDE_CONFIG_DIR:-~/.claude}:/home/hermes/.claude:ro
+      - \${HOME}/.claude.json:/home/hermes/.claude.json:ro
     stop_grace_period: 120s
     restart: unless-stopped
 
