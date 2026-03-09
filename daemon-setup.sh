@@ -168,6 +168,15 @@ cmd_run() {
 
     cd "$DAEMON_DIR"
 
+    # Self-update: download latest script + regenerate compose
+    info "Updating script and config..."
+    curl -fsSL https://raw.githubusercontent.com/jgyoo/hermes_demon_test_repo/main/daemon-setup.sh \
+        -o "$DAEMON_DIR/daemon-setup.sh.tmp" \
+        && mv "$DAEMON_DIR/daemon-setup.sh.tmp" "$DAEMON_DIR/daemon-setup.sh" \
+        && chmod +x "$DAEMON_DIR/daemon-setup.sh" \
+        || warn "Script update failed — using current version"
+    generate_compose_file
+
     # Always pull latest image before starting (enables auto-update via Send Update)
     info "Pulling latest image..."
     docker pull "${IMAGE}:latest" || warn "Pull failed — using cached image"
