@@ -71,29 +71,39 @@ detect_compose() {
 }
 
 check_claude_auth() {
-    # Check multiple possible credential locations
-    local found=false
-    for creds in "$HOME/.claude/.credentials.json" "$HOME/.claude/credentials.json"; do
-        if [[ -f "$creds" && -s "$creds" ]]; then
-            found=true
-            break
-        fi
-    done
+    local creds_file="$HOME/.claude/.credentials.json"
 
-    if [[ "$found" == "false" ]]; then
-        error "Claude credentials not found."
-        echo "  Checked: ~/.claude/.credentials.json, ~/.claude/credentials.json"
-        echo ""
-        echo "  1. Install Claude Code CLI (if needed):"
-        printf "     %snpm install -g @anthropic-ai/claude-code%s\n" "$BOLD" "$NC"
-        echo ""
-        echo "  2. Login:"
-        printf "     %sclaude login%s\n" "$BOLD" "$NC"
-        echo ""
-        echo "  Then re-run this script."
-        exit 1
+    # Check if credentials file already exists
+    if [[ -f "$creds_file" && -s "$creds_file" ]]; then
+        info "Claude credentials verified"
+        return 0
     fi
-    info "Claude credentials verified"
+
+    # macOS: try extracting from Keychain automatically
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local keychain_data
+        keychain_data=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null || true)
+        if [[ -n "$keychain_data" ]]; then
+            info "Found credentials in macOS Keychain, extracting..."
+            mkdir -p "$HOME/.claude"
+            echo "$keychain_data" > "$creds_file"
+            chmod 600 "$creds_file"
+            info "Credentials saved to $creds_file"
+            return 0
+        fi
+    fi
+
+    # Not found anywhere
+    error "Claude credentials not found."
+    echo ""
+    echo "  1. Install Claude Code CLI (if needed):"
+    printf "     %snpm install -g @anthropic-ai/claude-code%s\n" "$BOLD" "$NC"
+    echo ""
+    echo "  2. Login:"
+    printf "     %sclaude login%s\n" "$BOLD" "$NC"
+    echo ""
+    echo "  Then re-run this script."
+    exit 1
 }
 
 check_prerequisites() {
