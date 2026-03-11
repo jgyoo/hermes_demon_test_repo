@@ -153,7 +153,7 @@ function Initialize-Setup {
     $daemonName = Read-Host "  Daemon name [$defaultName]"
     if ([string]::IsNullOrWhiteSpace($daemonName)) { $daemonName = $defaultName }
 
-    $defaultUrl = "ws://localhost:8003/ws/nodes"
+    $defaultUrl = "ws://192.168.11.23:8003/ws/nodes"
     $orchUrl = Read-Host "  Orchestrator URL [$defaultUrl]"
     if ([string]::IsNullOrWhiteSpace($orchUrl)) { $orchUrl = $defaultUrl }
 
