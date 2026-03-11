@@ -40,14 +40,17 @@ check_docker() {
 
     if command -v docker >/dev/null 2>&1; then
         error "Docker is installed but not running."
-        echo "  Please start Docker and try again."
+        case "$(uname -s)" in
+            Darwin*) echo "  Open Docker Desktop app and wait until it's ready, then re-run." ;;
+            *)       echo "  Run: sudo systemctl start docker" ;;
+        esac
         exit 1
     fi
 
     error "Docker is not installed."
     echo ""
     case "$(uname -s)" in
-        Darwin*) echo "  Install: https://docs.docker.com/desktop/install/mac-install/" ;;
+        Darwin*) echo "  Install Docker Desktop: https://docs.docker.com/desktop/install/mac-install/" ;;
         *)       echo "  Install: curl -fsSL https://get.docker.com | sh"
                  echo "  Then:    sudo usermod -aG docker \$USER && newgrp docker" ;;
     esac
