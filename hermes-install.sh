@@ -70,9 +70,18 @@ detect_compose() {
 }
 
 check_claude_auth() {
-    local creds="$HOME/.claude/.credentials.json"
-    if [[ ! -f "$creds" ]] || [[ ! -s "$creds" ]]; then
-        error "Claude credentials not found at: $creds"
+    # Check multiple possible credential locations
+    local found=false
+    for creds in "$HOME/.claude/.credentials.json" "$HOME/.claude/credentials.json"; do
+        if [[ -f "$creds" && -s "$creds" ]]; then
+            found=true
+            break
+        fi
+    done
+
+    if [[ "$found" == "false" ]]; then
+        error "Claude credentials not found."
+        echo "  Checked: ~/.claude/.credentials.json, ~/.claude/credentials.json"
         echo ""
         echo "  1. Install Claude Code CLI (if needed):"
         printf "     %snpm install -g @anthropic-ai/claude-code%s\n" "$BOLD" "$NC"
