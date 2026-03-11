@@ -17,17 +17,18 @@ REGISTRY="${HERMES_REGISTRY:-ghcr.io/jgyoo}"
 IMAGE="${REGISTRY}/hermes-daemon"
 DAEMON_DIR="${HERMES_DAEMON_DIR:-$HOME/.hermes-daemon}"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m'
+# Colors — use printf throughout (macOS bash 3.2 echo -e is unreliable)
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+CYAN=$'\033[0;36m'
+BOLD=$'\033[1m'
+NC=$'\033[0m'
 
-info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
-step()  { echo -e "\n${CYAN}${BOLD}==> $*${NC}"; }
+info()  { printf "%s[INFO]%s %s\n" "$GREEN" "$NC" "$*"; }
+warn()  { printf "%s[WARN]%s %s\n" "$YELLOW" "$NC" "$*"; }
+error() { printf "%s[ERROR]%s %s\n" "$RED" "$NC" "$*" >&2; }
+step()  { printf "\n%s%s==> %s%s\n" "$CYAN" "$BOLD" "$*" "$NC"; }
 
 # ---------------------------------------------------------------------------
 # Prerequisites
@@ -71,13 +72,13 @@ detect_compose() {
 check_claude_auth() {
     local creds="$HOME/.claude/.credentials.json"
     if [[ ! -f "$creds" ]] || [[ ! -s "$creds" ]]; then
-        error "Claude credentials not found."
+        error "Claude credentials not found at: $creds"
         echo ""
         echo "  1. Install Claude Code CLI (if needed):"
-        echo "     ${BOLD}npm install -g @anthropic-ai/claude-code${NC}"
+        printf "     %snpm install -g @anthropic-ai/claude-code%s\n" "$BOLD" "$NC"
         echo ""
         echo "  2. Login:"
-        echo "     ${BOLD}claude login${NC}"
+        printf "     %sclaude login%s\n" "$BOLD" "$NC"
         echo ""
         echo "  Then re-run this script."
         exit 1
@@ -188,7 +189,8 @@ EOF
 
 save_script_locally() {
     local target="$DAEMON_DIR/hermes-install.sh"
-    if [[ ! -f "$target" ]] || [[ "$(cat "$target" 2>/dev/null | md5sum)" != "$(cat "$0" 2>/dev/null | md5sum)" ]]; then
+    # When piped (curl | bash), $0 is "bash" — skip copy in that case
+    if [[ "$0" != "bash" && -f "$0" ]]; then
         cp "$0" "$target" 2>/dev/null || true
         chmod +x "$target" 2>/dev/null || true
     fi
@@ -213,7 +215,7 @@ cmd_start() {
     echo ""
     info "=== Hermes Daemon is running! ==="
     echo ""
-    echo "  ${BOLD}Manage with:${NC}"
+    printf "  %sManage with:%s\n" "$BOLD" "$NC"
     echo "    hermes logs      — View logs"
     echo "    hermes status    — Check status"
     echo "    hermes stop      — Stop daemon"
@@ -260,7 +262,7 @@ cmd_status() {
     if [[ -n "$container" ]]; then
         local version
         version=$(docker exec "$container" python -c "from agent.daemon import __version__; print(__version__)" 2>/dev/null || echo "unknown")
-        info "Daemon version: ${BOLD}${version}${NC}"
+        printf "%s[INFO]%s Daemon version: %s%s%s\n" "$GREEN" "$NC" "$BOLD" "$version" "$NC"
     fi
 }
 
@@ -270,8 +272,13 @@ cmd_uninstall() {
     # Remove alias
     local shell_rc="$HOME/.bashrc"
     [[ -f "$HOME/.zshrc" ]] && shell_rc="$HOME/.zshrc"
-    sed -i '/# Hermes daemon alias/d' "$shell_rc" 2>/dev/null || true
-    sed -i '/alias hermes=/d' "$shell_rc" 2>/dev/null || true
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' '/# Hermes daemon alias/d' "$shell_rc" 2>/dev/null || true
+        sed -i '' '/alias hermes=/d' "$shell_rc" 2>/dev/null || true
+    else
+        sed -i '/# Hermes daemon alias/d' "$shell_rc" 2>/dev/null || true
+        sed -i '/alias hermes=/d' "$shell_rc" 2>/dev/null || true
+    fi
     info "Service removed. Config preserved at $DAEMON_DIR/"
 }
 
@@ -296,7 +303,7 @@ install_alias() {
         echo "" >> "$shell_rc"
         echo "# Hermes daemon alias" >> "$shell_rc"
         echo "alias hermes='$script'" >> "$shell_rc"
-        info "Added 'hermes' alias. Run: ${BOLD}source $shell_rc${NC} or open a new terminal."
+        printf "%s[INFO]%s Added 'hermes' alias. Run: %ssource %s%s or open a new terminal.\n" "$GREEN" "$NC" "$BOLD" "$shell_rc" "$NC"
     fi
 }
 
@@ -311,17 +318,17 @@ case "${1:-start}" in
     uninstall) cmd_uninstall ;;
     help|-h|--help)
         echo ""
-        echo "  ${BOLD}Hermes Daemon Manager${NC}"
+        printf "  %sHermes Daemon Manager%s\n" "$BOLD" "$NC"
         echo ""
         echo "  Usage: hermes [command]"
         echo ""
-        echo "    ${BOLD}(none)${NC}    — Setup + start (default)"
-        echo "    ${BOLD}stop${NC}      — Stop daemon"
-        echo "    ${BOLD}logs${NC}      — Tail logs"
-        echo "    ${BOLD}status${NC}    — Show status + version"
-        echo "    ${BOLD}update${NC}    — Manual image update"
-        echo "    ${BOLD}run${NC}       — Foreground mode (debug)"
-        echo "    ${BOLD}uninstall${NC} — Remove everything"
+        printf "    %s(none)%s    — Setup + start (default)\n" "$BOLD" "$NC"
+        printf "    %sstop%s      — Stop daemon\n" "$BOLD" "$NC"
+        printf "    %slogs%s      — Tail logs\n" "$BOLD" "$NC"
+        printf "    %sstatus%s    — Show status + version\n" "$BOLD" "$NC"
+        printf "    %supdate%s    — Manual image update\n" "$BOLD" "$NC"
+        printf "    %srun%s       — Foreground mode (debug)\n" "$BOLD" "$NC"
+        printf "    %suninstall%s — Remove everything\n" "$BOLD" "$NC"
         echo ""
         ;;
     *)
