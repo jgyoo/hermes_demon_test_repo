@@ -36,6 +36,7 @@ step()  { printf "\n%s%s==> %s%s\n" "$CYAN" "$BOLD" "$*" "$NC"; }
 
 check_docker() {
     if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        info "Docker verified"
         return 0
     fi
 
@@ -215,8 +216,8 @@ cmd_start() {
     ensure_setup
 
     cd "$DAEMON_DIR"
-    step "Pulling latest image..."
-    docker pull "${IMAGE}:latest" 2>/dev/null || true
+    step "Pulling latest image (this may take a few minutes on first install)..."
+    docker pull "${IMAGE}:latest" || true
 
     step "Starting daemon + Watchtower..."
     $COMPOSE_CMD up -d
