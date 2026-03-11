@@ -185,9 +185,16 @@ ensure_setup() {
     prompt_input "  Daemon name [$default_name]: " "$default_name" daemon_name
     prompt_input "  Orchestrator URL [ws://192.168.11.23:8003/ws/nodes]: " "ws://192.168.11.23:8003/ws/nodes" orch_url
 
+    # Detect host OS for platform reporting (container always reports linux)
+    local host_os host_arch
+    host_os=$(uname -s | tr '[:upper:]' '[:lower:]')  # linux, darwin
+    host_arch=$(uname -m)                               # x86_64, arm64
+
     cat > "$DAEMON_DIR/.env.daemon" <<EOF
 HERMES_AGENT_AGENT_NAME=${daemon_name}
 HERMES_AGENT_ORCHESTRATOR_URL=${orch_url}
+HERMES_AGENT_HOST_OS=${host_os}
+HERMES_AGENT_HOST_ARCH=${host_arch}
 CLAUDE_CONFIG_DIR=/home/hermes/.claude
 
 # OTEL Configuration

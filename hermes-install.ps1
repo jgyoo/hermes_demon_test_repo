@@ -160,6 +160,8 @@ function Initialize-Setup {
     $envContent = @"
 HERMES_AGENT_AGENT_NAME=${daemonName}
 HERMES_AGENT_ORCHESTRATOR_URL=${orchUrl}
+HERMES_AGENT_HOST_OS=windows
+HERMES_AGENT_HOST_ARCH=$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower())
 CLAUDE_CONFIG_DIR=/home/hermes/.claude
 
 # OTEL Configuration
