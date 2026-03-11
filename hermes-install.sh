@@ -172,7 +172,7 @@ ensure_setup() {
 
     echo ""
     prompt_input "  Daemon name [$default_name]: " "$default_name" daemon_name
-    prompt_input "  Orchestrator URL [ws://localhost:8003/ws/nodes]: " "ws://localhost:8003/ws/nodes" orch_url
+    prompt_input "  Orchestrator URL [ws://192.168.11.23:8003/ws/nodes]: " "ws://192.168.11.23:8003/ws/nodes" orch_url
 
     cat > "$DAEMON_DIR/.env.daemon" <<EOF
 HERMES_AGENT_AGENT_NAME=${daemon_name}
