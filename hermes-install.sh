@@ -16,6 +16,8 @@ set -euo pipefail
 REGISTRY="${HERMES_REGISTRY:-ghcr.io/jgyoo}"
 IMAGE="${REGISTRY}/hermes-daemon"
 DAEMON_DIR="${HERMES_DAEMON_DIR:-$HOME/.hermes-daemon}"
+KEYCHAIN_SYNC_LABEL="com.olympus.hermes-keychain-sync"
+KEYCHAIN_SYNC_PLIST="$HOME/Library/LaunchAgents/${KEYCHAIN_SYNC_LABEL}.plist"
 
 # Colors — use printf throughout (macOS bash 3.2 echo -e is unreliable)
 RED=$'\033[0;31m'
@@ -211,6 +213,77 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# macOS Keychain → .credentials.json sync
+# ---------------------------------------------------------------------------
+
+install_keychain_sync() {
+    # macOS only — sync Keychain credentials to file every 5 minutes
+    [[ "$(uname -s)" != "Darwin" ]] && return
+
+    # Create sync script
+    local sync_script="$DAEMON_DIR/sync-keychain.sh"
+    cat > "$sync_script" <<'SYNC'
+#!/bin/bash
+# Sync Claude credentials from macOS Keychain to .credentials.json
+CREDS="$HOME/.claude/.credentials.json"
+DATA=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null || true)
+if [[ -n "$DATA" ]]; then
+    mkdir -p "$HOME/.claude"
+    # Only write if changed (avoid unnecessary file modification)
+    CURRENT=$(cat "$CREDS" 2>/dev/null || true)
+    if [[ "$DATA" != "$CURRENT" ]]; then
+        echo "$DATA" > "$CREDS"
+        chmod 600 "$CREDS"
+    fi
+fi
+SYNC
+    chmod +x "$sync_script"
+
+    # Run once immediately
+    bash "$sync_script"
+
+    # Skip if already registered
+    [[ -f "$KEYCHAIN_SYNC_PLIST" ]] && return
+
+    mkdir -p "$(dirname "$KEYCHAIN_SYNC_PLIST")"
+    cat > "$KEYCHAIN_SYNC_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${KEYCHAIN_SYNC_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>${sync_script}</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>300</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${DAEMON_DIR}/keychain-sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>${DAEMON_DIR}/keychain-sync.err</string>
+</dict>
+</plist>
+PLIST
+
+    launchctl load "$KEYCHAIN_SYNC_PLIST" 2>/dev/null || true
+    info "Keychain credential sync registered (every 5 minutes)"
+}
+
+uninstall_keychain_sync() {
+    [[ "$(uname -s)" != "Darwin" ]] && return
+    if [[ -f "$KEYCHAIN_SYNC_PLIST" ]]; then
+        launchctl unload "$KEYCHAIN_SYNC_PLIST" 2>/dev/null || true
+        rm -f "$KEYCHAIN_SYNC_PLIST"
+        info "Keychain sync agent removed"
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Save this script locally for future management commands
 # ---------------------------------------------------------------------------
 
@@ -251,6 +324,9 @@ cmd_start() {
     echo ""
     echo "  Auto-update is enabled."
     echo "  Config: $DAEMON_DIR/"
+
+    # macOS: sync Keychain credentials periodically
+    install_keychain_sync
 
     # Install 'hermes' alias for convenience
     install_alias
@@ -296,6 +372,8 @@ cmd_status() {
 cmd_uninstall() {
     check_docker; detect_compose
     cd "$DAEMON_DIR" 2>/dev/null && $COMPOSE_CMD down -v 2>/dev/null || true
+    # Remove Keychain sync
+    uninstall_keychain_sync
     # Remove alias
     local shell_rc="$HOME/.bashrc"
     [[ -f "$HOME/.zshrc" ]] && shell_rc="$HOME/.zshrc"
