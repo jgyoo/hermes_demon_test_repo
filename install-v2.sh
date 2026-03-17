@@ -26,10 +26,10 @@ echo "  Port:     $PORT"
 echo "  Image:    $IMAGE"
 echo ""
 
-# Stop existing v1/v2 daemon
+# Stop existing v1/v2 daemon (force kill to avoid long grace period)
 echo "[1/3] 기존 데몬 중지..."
-docker stop olympus-daemon hermes-daemon-${NAME} 2>/dev/null || true
-docker rm olympus-daemon hermes-daemon-${NAME} 2>/dev/null || true
+docker kill olympus-daemon olympus-daemon-${NAME} hermes-daemon-${NAME} hermes-daemon-default 2>/dev/null || true
+docker rm -f olympus-daemon olympus-daemon-${NAME} hermes-daemon-${NAME} hermes-daemon-default 2>/dev/null || true
 
 # Pull latest
 echo "[2/3] 최신 이미지 다운로드..."
