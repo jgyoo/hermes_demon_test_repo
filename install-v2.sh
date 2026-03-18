@@ -13,7 +13,7 @@
 set -e
 
 NAME="${DAEMON_NAME:-$(hostname)}"
-USER="${DAEMON_USER:-$(whoami)}"
+TUSER="${DAEMON_USER:-$(whoami)}"
 URL="${OLYMPUS_URL:-https://olympus-production-3544.up.railway.app/mcp}"
 PORT="${DAEMON_PORT:-9100}"
 IMAGE="ghcr.io/jgyoo/hermes-daemon:latest"
@@ -36,7 +36,7 @@ else
 fi
 echo ""
 echo "  Name:      $NAME"
-echo "  User:      $USER"
+echo "  User:      $TUSER"
 echo "  Olympus:   $URL"
 echo "  Port:      $PORT"
 echo "  Image:     $IMAGE"
@@ -57,11 +57,15 @@ docker run -d \
   --name "$CONTAINER" \
   --restart unless-stopped \
   -e DAEMON_NAME="$NAME" \
-  -e DAEMON_USER="$USER" \
+  -e DAEMON_USER="$TUSER" \
   -e OLYMPUS_URL="$URL" \
+  -e OTEL_RECEIVER_ADDR=":4317" \
+  -e TELEMETRY_FLUSH_INTERVAL="10m" \
+  -e DAEMON_WORKSPACE="/home/daemon/workspace" \
   -v "${HOME}/.claude:/home/daemon/.host-claude:ro" \
   -v "${HOME}/.ssh:/home/daemon/.ssh:ro" \
   -p "${PORT}:9100" \
+  -p "4317:4317" \
   "$IMAGE"
 
 echo ""
@@ -74,3 +78,5 @@ echo ""
 echo "  로그:     docker logs -f $CONTAINER"
 echo "  중지:     docker stop $CONTAINER"
 echo "  재설치:   curl -sL https://raw.githubusercontent.com/jgyoo/hermes_demon_test_repo/main/install-v2.sh | bash"
+echo ""
+echo "  텔레메트리: OTLP :4317, flush 10분 간격"
