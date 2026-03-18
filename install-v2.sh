@@ -51,7 +51,7 @@ docker rm -f olympus-daemon olympus-daemon-${NAME} hermes-daemon-${NAME} hermes-
 echo "[2/3] 최신 이미지 다운로드..."
 docker pull "$IMAGE"
 
-# Run
+# Run — mount host .claude as .host-claude (read-only) to prevent ownership changes
 echo "[3/3] 데몬 시작..."
 docker run -d \
   --name "$CONTAINER" \
@@ -59,7 +59,7 @@ docker run -d \
   -e DAEMON_NAME="$NAME" \
   -e DAEMON_USER="$USER" \
   -e OLYMPUS_URL="$URL" \
-  -v "${HOME}/.claude:/home/daemon/.claude:ro" \
+  -v "${HOME}/.claude:/home/daemon/.host-claude:ro" \
   -v "${HOME}/.ssh:/home/daemon/.ssh:ro" \
   -p "${PORT}:9100" \
   "$IMAGE"
